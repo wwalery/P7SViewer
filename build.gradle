@@ -1,0 +1,166 @@
+plugins {
+  id "net.ossindex.audit" version "0.1.1"
+  id 'com.diffplug.spotless' version "${spotlessPluginVersion}"
+  id "com.dorongold.task-tree" version "1.3.1"
+//  id 'checkstyle'
+  id "com.github.johnrengelman.shadow" version "7.1.2"
+}
+
+
+apply plugin: 'java'
+apply plugin: 'jacoco'
+apply plugin: 'application'
+apply plugin: 'idea'
+//apply plugin: 'checkstyle'
+apply plugin: 'com.diffplug.spotless'
+apply plugin: "com.github.johnrengelman.shadow"
+
+mainClassName = 'dev.walgo.p7sviewer.Main'
+ext.javaVersion = JavaVersion.VERSION_17
+
+idea.module.downloadJavadoc = true
+java {
+  sourceCompatibility = javaVersion
+  targetCompatibility = javaVersion
+}
+
+
+
+repositories {
+    jcenter()
+}
+
+spotless {
+    predeclareDeps()
+}    
+
+spotlessPredeclare {
+    java { 
+//        targetExclude("src/test/java/**/*Test.java")
+//        toggleOffOn('fmt:off', 'fmt:on')
+//        removeUnusedImports()
+//        importOrder()
+        eclipse()
+        googleJavaFormat()
+//        .configFile("formatter.xml")    
+    }
+}
+
+
+spotless {
+  java {
+    targetExclude("src/test/java/**/*Test.java")
+    toggleOffOn('fmt:off', 'fmt:on')
+    removeUnusedImports()
+    importOrder()
+    eclipse().configFile("${rootDir}/formatter.xml")    
+  }
+}    
+
+compileJava.dependsOn 'spotlessApply'
+
+
+
+tasks.withType(JavaCompile) {
+  options.encoding = 'UTF-8'
+  options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Werror" << "-Xlint:all" << "-Xlint:-processing"
+}
+
+//checkstyle {
+//  configFile file("checkstyle.xml")
+//  toolVersion '8.26';
+//}
+
+//tasks.withType(Checkstyle) {
+// Specify all files that should be checked
+//  classpath = files()
+//  source "${project.rootDir}"
+
+// Define the output folder of the generated reports
+//  reports {
+//    html {
+//      enabled true
+//      destination rootProject.file("build/reports/checkstyle/checkstyle.html")
+//    }
+//    xml {
+//      enabled true
+//      destination rootProject.file("build/reports/checkstyle/checkstyle.xml")
+//    }
+//  }
+//}
+// Execute Checkstyle on all files
+//task checkstyle(type: Checkstyle) {
+//}
+
+//task checkstyleChanged(type: Checkstyle) {
+//    def changedFiles = System.getProperty('changedFiles', '').split(',')
+//    include changedFiles
+//}
+
+//task checkChanged {
+//  dependsOn checkstyleChanged
+//}
+
+dependencies {
+
+//  compileOnly "org.projectlombok:lombok:${lombokVersion}"
+//  annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+//  testImplementation "org.projectlombok:lombok:${lombokVersion}"
+//  testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+//  implementation "commons-cli:commons-cli:${commonsCliVersion}"
+
+  implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+  implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+//  implementation "ch.qos.logback:logback-classic:${logbackVersion}"
+//  implementation "ch.qos.logback:logback-core:${logbackVersion}"
+  implementation "org.bouncycastle:bcprov-jdk18on:${bouncyCastleVersion}"
+  implementation "org.bouncycastle:bcpkix-jdk18on:${bouncyCastleVersion}"
+  implementation 'org.apache.commons:commons-lang3:3.12.0'
+
+  testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+  
+}
+
+task copyResources(type: Copy) {
+  destinationDir = file('./build/libs')
+  from('./resources')
+}
+
+
+
+task javadocJar(type: Jar) {
+  classifier = 'javadoc'
+  from javadoc
+}
+
+task sourcesJar(type: Jar) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+artifacts {
+  archives javadocJar, sourcesJar
+}
+
+shadowJar {
+  dependsOn copyResources
+//  baseName = name
+  classifier = ''
+}
+
+test {
+  useJUnitPlatform()
+  testLogging {
+    events /*"passed", */ "skipped", "failed"
+//    events "started", "passed", "skipped", "failed"
+    exceptionFormat = 'full'
+    showStandardStreams = true
+  }
+  afterSuite { desc, result ->
+    if (!desc.parent) { // will match the outermost suite
+      println "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+    }
+  }
+}
+
